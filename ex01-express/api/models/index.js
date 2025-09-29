@@ -1,36 +1,28 @@
 import Sequelize from "sequelize";
-import pg from "pg";
 
-import getUserModel from "./user.js";
-import getMessageModel from "./message.js";
+import getUserModel from "./user";
+import getMessageModel from "./message";
 
-// Configuração da conexão com ajustes de pool para o Neon
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+//POSTGRES_URL
+const sequelize = new Sequelize(process.env.POSTGRES_URL, {
   dialect: "postgres",
   protocol: "postgres",
+  // logging: false, // Disable SQL query logging
   dialectOptions: {
+    // Necessary for SSL on NeonDB, Render.com and other providers
     ssl: {
-      require: true,       // Neon exige SSL
+      require: true,
       rejectUnauthorized: false,
     },
   },
-  dialectModule: pg,
-  pool: {
-    max: 5,               // no máx. 5 conexões (Neon free permite 10)
-    min: 0,
-    acquire: 30000,       // espera até 30s para pegar conexão
-    idle: 10000,          // fecha conexões ociosas depois de 10s
-  },
-  logging: false,         // desliga logs SQL (opcional)
+  dialectModule: require("pg"),
 });
 
-// Carregando models
 const models = {
   User: getUserModel(sequelize, Sequelize),
   Message: getMessageModel(sequelize, Sequelize),
 };
 
-// Configurando associações, se existirem
 Object.keys(models).forEach((key) => {
   if ("associate" in models[key]) {
     models[key].associate(models);
@@ -38,4 +30,5 @@ Object.keys(models).forEach((key) => {
 });
 
 export { sequelize };
+
 export default models;
