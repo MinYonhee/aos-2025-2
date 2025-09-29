@@ -68,20 +68,34 @@ const createUsersWithMessages = async () => {
   );
 };
 
-// Inicialização do banco
-(async () => {
-  try {
-    await sequelize.authenticate();
-    console.log("✅ Conectado ao banco com sucesso!");
+let isConnected = false;
 
-    // Apenas local: sincroniza e popula dados
-    if (process.env.NODE_ENV !== "production") {
-      await sequelize.sync(); // não usa force para não deletar dados
-      await createUsersWithMessages();
-    }
-  } catch (err) {
-    console.error("Erro ao conectar com o banco:", err);
+async function connectDB() {
+  if (!isConnected) {
+    await sequelize.authenticate();
+    isConnected = true;
+    console.log("✅ Conectado ao banco com sucesso!");
   }
-})();
+}
+
+// conecta antes de cada requisição
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Erro ao conectar no banco:", err);
+    res.status(500).json({ error: "Erro ao conectar no banco" });
+  }
+});
+
+// apenas no dev, local
+if (process.env.NODE_ENV === "development") {
+  (async () => {
+    await sequelize.sync();
+    await createUsersWithMessages();
+  })();
+}
+
 
 export default serverless(app);
