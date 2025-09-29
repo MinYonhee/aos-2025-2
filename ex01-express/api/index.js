@@ -2,8 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 
-import models, { sequelize } from "./models";
-import routes from "./routes";
+import models, { sequelize } from "./models/index.js";
+import routes from "./routes/index.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -24,14 +24,6 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Código para injetar no context o usuário que está logado e os models
-app.use(async (req, res, next) => {
-  req.context = {
-    models,
-    me: await models.User.findByPk(1),
-  };
-  next();
-});
 
 app.use("/", routes.root);
 app.use("/session", routes.session);
@@ -48,7 +40,7 @@ sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   }
 
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}!`);
+    console.log(`Server is running in http://localhost:${port} !`);
   });
 });
 
