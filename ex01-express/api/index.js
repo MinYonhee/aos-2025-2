@@ -25,23 +25,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORREÇÃO: Middleware otimizado para Serverless (sem autenticação síncrona)
+// 🚩 CORREÇÃO CRÍTICA: Middleware Otimizado
+// Removemos a busca síncrona do usuário no Cold Start para evitar o timeout.
 app.use(async (req, res, next) => {
   
-  // A primeira query (User.findByPk) forçará a conexão/reconexão 
-  // do pool do Sequelize de forma assíncrona, mais resiliente.
-  let currentUser = null;
-  try {
-    currentUser = await models.User.findByPk(1); 
-  } catch (e) {
-    // Apenas loga o erro de conexão/busca no middleware e continua.
-    // O erro real será tratado nas rotas com 500.
-    console.error("Aviso: Falha ao buscar usuário no middleware:", e.message);
-  }
-
+  // A conexão real com o banco (Neon) só será iniciada quando uma ROTA fizer uma consulta.
   req.context = {
     models,
-    me: currentUser,
+    // me: null é a sugestão mais rápida. 
+    // A busca por um usuário autenticado deve ser feita APENAS nas rotas que precisam dele (ex: rota /session ou um middleware JWT).
+    me: null, 
   };
   next();
 });
@@ -62,11 +55,10 @@ async function createUsersWithMessages() {
         { text: "Published the Road to learn React" },
         { text: "Published also the Road to learn Express + PostgreSQL" },
       ],
-      // ...
     },
     { include: [models.Message] }
   );
-  
+
   await models.User.create(
     {
       username: "ddavids",
@@ -75,7 +67,6 @@ async function createUsersWithMessages() {
         { text: "Happy to release ..." },
         { text: "Published a complete ..." },
       ],
-      // ...
     },
     { include: [models.Message] }
   );
