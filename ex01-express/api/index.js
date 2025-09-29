@@ -25,14 +25,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware para injetar context
-app.use(async (req, res, next) => {
-  // Usuário "logado" de teste
-  const me = await models.User.findByPk(1);
-  req.context = {
-    models,
-    me,
-  };
+// Middleware seguro para serverless
+// Injeta apenas os models. Usuário logado será buscado dentro da rota quando necessário.
+app.use((req, res, next) => {
+  req.context = { models };
   next();
 });
 
@@ -72,19 +68,19 @@ const createUsersWithMessages = async () => {
   );
 };
 
-// Sincronizar DB
+// Inicialização do banco
 (async () => {
   try {
     await sequelize.authenticate();
     console.log("✅ Conectado ao banco com sucesso!");
 
-    // Só faz sync e popula localmente
+    // Apenas local: sincroniza e popula dados
     if (process.env.NODE_ENV !== "production") {
-      await sequelize.sync(); // não usa force para evitar deletar dados
+      await sequelize.sync(); // não usa force para não deletar dados
       await createUsersWithMessages();
     }
   } catch (err) {
-    console.error("❌ Erro ao conectar com o banco:", err);
+    console.error("Erro ao conectar com o banco:", err);
   }
 })();
 
