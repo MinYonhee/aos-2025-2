@@ -10,7 +10,8 @@ const app = express();
 app.set("trust proxy", true);
 
 const corsOptions = {
-  origin: ["http://example.com", "*"],
+  // ATENÇÃO: Em produção, o '*' deve ser substituído pelo seu domínio real.
+  origin: ["http://example.com", "*"], 
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
@@ -24,17 +25,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Injetar context
+// CORREÇÃO: Middleware otimizado para Serverless (sem autenticação síncrona)
 app.use(async (req, res, next) => {
-  // Lazy connection
-  if (!sequelize.connectionManager?.default?.connected) {
-    await sequelize.authenticate();
-    console.log("✅ Banco conectado");
+  
+  // A primeira query (User.findByPk) forçará a conexão/reconexão 
+  // do pool do Sequelize de forma assíncrona, mais resiliente.
+  let currentUser = null;
+  try {
+    currentUser = await models.User.findByPk(1); 
+  } catch (e) {
+    // Apenas loga o erro de conexão/busca no middleware e continua.
+    // O erro real será tratado nas rotas com 500.
+    console.error("Aviso: Falha ao buscar usuário no middleware:", e.message);
   }
 
   req.context = {
     models,
-    me: await models.User.findByPk(1), // opcional, só se quiser usuário fixo
+    me: currentUser,
   };
   next();
 });
@@ -55,10 +62,11 @@ async function createUsersWithMessages() {
         { text: "Published the Road to learn React" },
         { text: "Published also the Road to learn Express + PostgreSQL" },
       ],
+      // ...
     },
     { include: [models.Message] }
   );
-
+  
   await models.User.create(
     {
       username: "ddavids",
@@ -67,12 +75,13 @@ async function createUsersWithMessages() {
         { text: "Happy to release ..." },
         { text: "Published a complete ..." },
       ],
+      // ...
     },
     { include: [models.Message] }
   );
 }
 
-// Apenas local/dev
+// Apenas local/dev (Mantido para desenvolvimento local)
 if (process.env.NODE_ENV !== "production") {
   const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
   sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
@@ -83,5 +92,5 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// Export para serverless
+// Export para serverless (Vercel)
 export default serverless(app);
