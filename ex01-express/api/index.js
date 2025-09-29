@@ -10,8 +10,10 @@ const app = express();
 app.set("trust proxy", true);
 
 const corsOptions = {
-  // ATENÇÃO: Em produção, o '*' deve ser substituído pelo seu domínio real.
-  origin: ["http://example.com", "*"], 
+  origin: [
+    "https://aos-2025-2-lyart.vercel.app", // Domínio Vercel (SEM a barra final '/')
+    "http://localhost:3000",                // Mantenha para testes locais
+  ], 
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
@@ -25,15 +27,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🚩 CORREÇÃO CRÍTICA: Middleware Otimizado
-// Removemos a busca síncrona do usuário no Cold Start para evitar o timeout.
+// Middleware Otimizado (sem busca no Cold Start)
 app.use(async (req, res, next) => {
-  
-  // A conexão real com o banco (Neon) só será iniciada quando uma ROTA fizer uma consulta.
   req.context = {
     models,
-    // me: null é a sugestão mais rápida. 
-    // A busca por um usuário autenticado deve ser feita APENAS nas rotas que precisam dele (ex: rota /session ou um middleware JWT).
     me: null, 
   };
   next();
@@ -44,6 +41,21 @@ app.use("/", routes.root);
 app.use("/session", routes.session);
 app.use("/users", routes.user);
 app.use("/messages", routes.message);
+
+
+app.use((req, res, next) => {
+    // Escuta o evento 'finish' (quando a resposta é enviada)
+    res.on('finish', () => {
+        try {
+            // Fecha todas as conexões ociosas para que não travem o próximo cold start
+            sequelize.connectionManager.close();
+        } catch (e) {
+            // Apenas um aviso, não deve impedir a resposta
+            console.warn("Aviso: Falha ao fechar o pool de conexões.", e);
+        }
+    });
+    next();
+});
 
 // Função para popular DB (somente local)
 async function createUsersWithMessages() {
@@ -72,7 +84,7 @@ async function createUsersWithMessages() {
   );
 }
 
-// Apenas local/dev (Mantido para desenvolvimento local)
+// Apenas local/dev 
 if (process.env.NODE_ENV !== "production") {
   const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
   sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
