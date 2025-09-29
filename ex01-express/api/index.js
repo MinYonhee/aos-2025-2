@@ -25,15 +25,13 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 👇 Middleware para req.context
-// Define models e usuário "logado" para simular autenticação
+// Middleware para injetar context
 app.use(async (req, res, next) => {
-  // Usuário de teste: precisa existir no banco (id = 1)
+  // Usuário "logado" de teste
   const me = await models.User.findByPk(1);
-
   req.context = {
     models,
-    me, 
+    me,
   };
   next();
 });
@@ -44,10 +42,11 @@ app.use("/session", routes.session);
 app.use("/users", routes.user);
 app.use("/messages", routes.message);
 
-// Seeder de teste
-const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
-
+// Função para popular DB com usuários e mensagens (apenas local)
 const createUsersWithMessages = async () => {
+  const exists = await models.User.findOne({ where: { id: 1 } });
+  if (exists) return; // evita duplicar
+
   await models.User.create(
     {
       username: "rwieruch",
@@ -73,11 +72,20 @@ const createUsersWithMessages = async () => {
   );
 };
 
-// Sincronizar DB e popular se necessário
-sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
-  if (eraseDatabaseOnSync) {
-    await createUsersWithMessages();
+// Sincronizar DB
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Conectado ao banco com sucesso!");
+
+    // Só faz sync e popula localmente
+    if (process.env.NODE_ENV !== "production") {
+      await sequelize.sync(); // não usa force para evitar deletar dados
+      await createUsersWithMessages();
+    }
+  } catch (err) {
+    console.error("❌ Erro ao conectar com o banco:", err);
   }
-});
+})();
 
 export default serverless(app);
