@@ -1,9 +1,8 @@
-import { DataTypes } from "sequelize";
-
+// api/models/message.js
 const getMessageModel = (sequelize, { DataTypes }) => {
   const Message = sequelize.define("message", {
     id: {
-      type: DataTypes.UUID, 
+      type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
@@ -15,7 +14,7 @@ const getMessageModel = (sequelize, { DataTypes }) => {
       },
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER, // 👈 bate com o User.id
       allowNull: false,
     },
   });

@@ -9,12 +9,14 @@ import routes from "./routes/index.js";
 const app = express();
 app.set("trust proxy", true);
 
+// Configuração CORS
 const corsOptions = {
   origin: ["http://example.com", "*"],
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
 
+// Logger simples
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - ${req.ip}`);
   next();
@@ -23,19 +25,27 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 👇 Middleware para req.context
+// Define models e usuário "logado" para simular autenticação
+app.use(async (req, res, next) => {
+  // Usuário de teste: precisa existir no banco (id = 1)
+  const me = await models.User.findByPk(1);
+
+  req.context = {
+    models,
+    me, 
+  };
+  next();
+});
+
+// Rotas
 app.use("/", routes.root);
 app.use("/session", routes.session);
 app.use("/users", routes.user);
 app.use("/messages", routes.message);
 
+// Seeder de teste
 const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
-
-
-sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
-  if (eraseDatabaseOnSync) {
-    await createUsersWithMessages();
-  }
-});
 
 const createUsersWithMessages = async () => {
   await models.User.create(
@@ -63,5 +73,11 @@ const createUsersWithMessages = async () => {
   );
 };
 
+// Sincronizar DB e popular se necessário
+sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
+  if (eraseDatabaseOnSync) {
+    await createUsersWithMessages();
+  }
+});
 
 export default serverless(app);
