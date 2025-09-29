@@ -1,5 +1,5 @@
 const getUserModel = (sequelize, { DataTypes }) => {
-  const User = sequelize.define("user", {
+  const User = sequelize.define("User", {
     username: {
       type: DataTypes.STRING,
       unique: true,
@@ -19,7 +19,7 @@ const getUserModel = (sequelize, { DataTypes }) => {
   });
 
   User.associate = (models) => {
-    User.hasMany(models.Message, { onDelete: "CASCADE" });
+    User.hasMany(models.Message, { foreignKey: "userId", onDelete: "CASCADE" });
   };
 
   User.findByLogin = async (login) => {

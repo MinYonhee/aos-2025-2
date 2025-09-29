@@ -1,5 +1,5 @@
 const getMessageModel = (sequelize, { DataTypes }) => {
-  const Message = sequelize.define("message", {
+  const Message = sequelize.define("Message", { 
     text: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -10,7 +10,7 @@ const getMessageModel = (sequelize, { DataTypes }) => {
   });
 
   Message.associate = (models) => {
-    Message.belongsTo(models.User);
+    Message.belongsTo(models.User, { foreignKey: "userId" }); 
   };
 
   return Message;
