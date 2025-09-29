@@ -1,4 +1,5 @@
 import "dotenv/config";
+import serverless from "serverless-http";
 import cors from "cors";
 import express from "express";
 
@@ -8,9 +9,9 @@ import routes from "./routes/index.js";
 const app = express();
 app.set("trust proxy", true);
 
-var corsOptions = {
+const corsOptions = {
   origin: ["http://example.com", "*"],
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+  optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
 
@@ -19,29 +20,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Código para conseguir extrair o conteúdo do body da mensagem HTTP
-// e armazenar na propriedade req.body (utiliza o body-parser)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 
 app.use("/", routes.root);
 app.use("/session", routes.session);
 app.use("/users", routes.user);
 app.use("/messages", routes.message);
 
-const port = process.env.PORT ?? 3000;
-
 const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
+
 
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
-    createUsersWithMessages();
+    await createUsersWithMessages();
   }
-
-  app.listen(port, () => {
-    console.log(`Server is running in http://localhost:${port} !`);
-  });
 });
 
 const createUsersWithMessages = async () => {
@@ -50,17 +43,11 @@ const createUsersWithMessages = async () => {
       username: "rwieruch",
       email: "rwieruch@email.com",
       messages: [
-        {
-          text: "Published the Road to learn React",
-        },
-        {
-          text: "Published also the Road to learn Express + PostgreSQL",
-        },
+        { text: "Published the Road to learn React" },
+        { text: "Published also the Road to learn Express + PostgreSQL" },
       ],
     },
-    {
-      include: [models.Message],
-    }
+    { include: [models.Message] }
   );
 
   await models.User.create(
@@ -68,16 +55,13 @@ const createUsersWithMessages = async () => {
       username: "ddavids",
       email: "ddavids@email.com",
       messages: [
-        {
-          text: "Happy to release ...",
-        },
-        {
-          text: "Published a complete ...",
-        },
+        { text: "Happy to release ..." },
+        { text: "Published a complete ..." },
       ],
     },
-    {
-      include: [models.Message],
-    }
+    { include: [models.Message] }
   );
 };
+
+
+export default serverless(app);

@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "start": "node api/index.js"
-
   },
   "keywords": [
     "node",
@@ -25,6 +24,7 @@
     "nodemon": "^3.1.10",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
+    "serverless-http": "^4.0.0",
     "uuid": "^11.1.0"
   }
 }
